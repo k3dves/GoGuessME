@@ -26,6 +26,9 @@ func (p *player) sendMsgToPlayer(msg message) {
 		barr := []byte("<" + msg.nick + "> " + msg.msg)
 		_, err = (*p.conn).Write(barr)
 
+	case "SERVER":
+		barr := []byte("<server> " + msg.msg)
+		_, err = (*p.conn).Write(barr)
 	}
 
 	if err != nil {
