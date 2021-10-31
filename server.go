@@ -18,7 +18,7 @@ type server struct {
 
 type message struct {
 	player *player
-	name   string
+	nick   string
 	msg    string
 	event  string
 }
@@ -41,12 +41,12 @@ func (s *server) run() {
 		select {
 		case player := <-s.register:
 			s.players[player] = player.nick
-			s.broadcastChannel <- message{player: player, name: player.nick, event: "JOIN"}
+			s.broadcastChannel <- message{player: player, nick: player.name, event: "JOIN"}
 			fmt.Printf("<%s> joined the server\n", player.nick)
 
 		case player := <-s.deregister:
 			delete(s.players, player)
-			s.broadcastChannel <- message{player: player, name: player.nick, event: "LEFT"}
+			s.broadcastChannel <- message{player: player, nick: player.name, event: "LEFT"}
 			(*player.conn).Close()
 
 		case msg := <-s.broadcastChannel:
@@ -67,14 +67,19 @@ func (s *server) broadcast(msg message) {
 func handleNewPlayer(s *server, c *net.Conn) {
 	p := &player{}
 	p.conn = c
+
 	(*p.conn).Write([]byte(PLAYER_GREET))
 	reader := bufio.NewReader(*p.conn)
-	nick, err := reader.ReadString('\n')
+	msg, err := reader.ReadString('\n')
 
 	if err != nil {
 		fmt.Printf("Error getting player nick : %s\n", err)
+		return
 	}
-	p.nick = strings.TrimSuffix(nick, "\n")
+	msg = strings.TrimSuffix(msg, "\n")
+	arr := strings.Split(msg, ":")
+	p.name = arr[0]
+	p.nick = arr[1]
 
 	s.register <- p
 
@@ -93,7 +98,7 @@ func handleNewPlayer(s *server, c *net.Conn) {
 			break
 		}
 		//Keep receiving the mgs and broadcast to broadcastChannel
-		s.broadcastChannel <- message{player: p, name: p.nick, msg: msg, event: "TEXT"}
+		s.broadcastChannel <- message{player: p, nick: p.nick, msg: msg, event: "TEXT"}
 	}
 
 }

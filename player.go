@@ -8,21 +8,22 @@ import (
 type player struct {
 	conn *net.Conn
 	nick string
+	name string
 }
 
 func (p *player) sendMsgToPlayer(msg message) {
 	var err error
 	switch msg.event {
 	case "JOIN":
-		barr := []byte("> " + msg.name + " joined the server\n")
+		barr := []byte("> " + msg.nick + " joined the server\n")
 		_, err = (*p.conn).Write(barr)
 
 	case "LEFT":
-		barr := []byte("< " + msg.name + " left the server\n")
+		barr := []byte("< " + msg.nick + " left the server\n")
 		_, err = (*p.conn).Write(barr)
 
 	case "TEXT":
-		barr := []byte("<" + msg.name + "> " + msg.msg)
+		barr := []byte("<" + msg.nick + "> " + msg.msg)
 		_, err = (*p.conn).Write(barr)
 
 	}
