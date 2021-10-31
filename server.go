@@ -11,9 +11,16 @@ import (
 type server struct {
 	players          map[*player]string
 	listener         net.Listener
-	broadcastChannel chan string
+	broadcastChannel chan message
 	register         chan *player
 	deregister       chan *player
+}
+
+type message struct {
+	player *player
+	name   string
+	msg    string
+	event  string
 }
 
 func (s *server) listen() {
@@ -34,12 +41,12 @@ func (s *server) run() {
 		select {
 		case player := <-s.register:
 			s.players[player] = player.nick
-			s.broadcastChannel <- "> " + player.nick + " joined the server\n"
+			s.broadcastChannel <- message{player: player, name: player.nick, event: "JOIN"}
 			fmt.Printf("<%s> joined the server\n", player.nick)
 
 		case player := <-s.deregister:
 			delete(s.players, player)
-			s.broadcastChannel <- "< " + player.nick + " left the server\n"
+			s.broadcastChannel <- message{player: player, name: player.nick, event: "LEFT"}
 			(*player.conn).Close()
 
 		case msg := <-s.broadcastChannel:
@@ -49,9 +56,11 @@ func (s *server) run() {
 	}
 }
 
-func (s *server) broadcast(msg string) {
+func (s *server) broadcast(msg message) {
 	for player := range s.players {
-		player.sendMsgToPlayer(msg)
+		if msg.event != "TEXT" || msg.player != player {
+			player.sendMsgToPlayer(msg)
+		}
 	}
 
 }
@@ -84,7 +93,7 @@ func handleNewPlayer(s *server, c *net.Conn) {
 			break
 		}
 		//Keep receiving the mgs and broadcast to broadcastChannel
-		s.broadcastChannel <- "<" + p.nick + "> " + msg
+		s.broadcastChannel <- message{player: p, name: p.nick, msg: msg, event: "TEXT"}
 	}
 
 }
@@ -96,7 +105,7 @@ func StartGameServer() {
 	s.listener, err = net.Listen("tcp", ":6060")
 	s.register = make(chan *player)
 	s.deregister = make(chan *player)
-	s.broadcastChannel = make(chan string, BRODCAST_CHAN_SIZE)
+	s.broadcastChannel = make(chan message, BRODCAST_CHAN_SIZE)
 	s.players = make(map[*player]string)
 
 	if err != nil {
