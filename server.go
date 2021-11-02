@@ -47,13 +47,13 @@ func (s *server) run() {
 			(*player.conn).Close()
 
 		case msg := <-s.broadcastChannel:
-			s.broadcast(msg)
+			s.broadcast(&msg)
 
 		}
 	}
 }
 
-func (s *server) broadcast(msg message) {
+func (s *server) broadcast(msg *message) {
 	for player := range s.players {
 		if msg.event != "TEXT" || msg.player != player {
 			player.sendMsgToPlayer(msg)

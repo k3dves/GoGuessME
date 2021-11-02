@@ -11,7 +11,7 @@ type player struct {
 	name string
 }
 
-func (p *player) sendMsgToPlayer(msg message) {
+func (p *player) sendMsgToPlayer(msg *message) {
 	var err error
 	switch msg.event {
 	case "JOIN":
@@ -27,7 +27,7 @@ func (p *player) sendMsgToPlayer(msg message) {
 		_, err = (*p.conn).Write(barr)
 
 	case "SERVER":
-		barr := []byte("<server> " + msg.msg)
+		barr := []byte("|server| " + msg.msg)
 		_, err = (*p.conn).Write(barr)
 	}
 

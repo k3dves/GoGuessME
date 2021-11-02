@@ -9,11 +9,11 @@ import (
 )
 
 func handleNewPlayer(s *server, c *net.Conn) {
-	p := &player{}
-	p.conn = c
+	player := &player{}
+	player.conn = c
 
-	(*p.conn).Write([]byte(PLAYER_GREET))
-	reader := bufio.NewReader(*p.conn)
+	(*player.conn).Write([]byte(PLAYER_GREET))
+	reader := bufio.NewReader(*player.conn)
 	msg, err := reader.ReadString('\n')
 
 	if err != nil {
@@ -22,28 +22,72 @@ func handleNewPlayer(s *server, c *net.Conn) {
 	}
 	msg = strings.TrimSuffix(msg, "\n")
 	arr := strings.Split(msg, ":")
-	p.name = arr[0]
-	p.nick = arr[1]
-	s.register <- p
+	player.name = arr[0]
+	player.nick = arr[1]
+	s.register <- player
 	for {
 		//Blocks till it gets a string
-		msg, err := reader.ReadString('\n')
+		text, err := reader.ReadString('\n')
 		if err == io.EOF {
 			//player left
-			s.deregister <- p
+			s.deregister <- player
 			break
 		}
 
 		if err != nil {
-			fmt.Printf("Error reading player: %s message. Error: %s \n", p.nick, err)
+			fmt.Printf("Error reading player: %s message. Error: %s \n", player.nick, err)
 			break
 		}
-		//Keep receiving the mgs and broadcast to broadcastChannel
-		s.broadcastChannel <- message{player: p, nick: p.nick, msg: msg, event: "TEXT"}
+		//Keep receiving the mgs and pass it to the handler
+		messageHandler(s, player, text)
 	}
 
 }
 
+func messageHandler(server *server, player *player, text string) {
+	//cerate a new message object
+	message := message{player: player, nick: player.nick}
+
+	if strings.HasPrefix(text, CMD_IDENTIFIER) {
+		text = strings.TrimSuffix(text, "\n")
+		text = strings.TrimSuffix(text, " ")
+		cmd := strings.TrimPrefix(text, CMD_IDENTIFIER)
+		cmd = strings.ToUpper(cmd)
+		d("command reveived " + cmd)
+		message.event = "CMD"
+		message.msg = cmd
+		commandHandler(server, &message)
+	} else {
+		message.event = "TEXT"
+		message.msg = text
+		server.broadcastChannel <- message
+	}
+}
+func commandHandler(server *server, message *message) {
+	switch message.msg {
+	case "SHOW":
+		playerNames := getAllPlayerName(server.players)
+		message.msg = playerNames
+	default:
+		message.msg = "Invalid command " + message.msg + "\n"
+
+	}
+	message.event = "SERVER"
+	message.player.sendMsgToPlayer(message)
+
+}
+
+func getAllPlayerName(players map[*player]string) string {
+	var arr []string
+	fmt.Println(len(players))
+	for p := range players {
+		d(p.name)
+		arr = append(arr, p.name)
+	}
+	fmt.Print(arr)
+	fmt.Print(len(arr))
+	return "Players : [" + strings.Join(arr, ", ") + "]\n"
+}
 func d(m string) {
 	fmt.Println(m)
 }
