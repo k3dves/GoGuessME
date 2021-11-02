@@ -11,6 +11,7 @@ type server struct {
 	broadcastChannel chan message
 	register         chan *player
 	deregister       chan *player
+	votes            map[string]int
 }
 
 type message struct {
@@ -43,6 +44,7 @@ func (s *server) run() {
 
 		case player := <-s.deregister:
 			delete(s.players, player.nick)
+			delete(s.votes, player.nick)
 			s.broadcastChannel <- message{player: player, nick: player.name, event: "LEFT"}
 			(*player.conn).Close()
 
@@ -71,6 +73,7 @@ func StartGameServer() {
 	s.deregister = make(chan *player)
 	s.broadcastChannel = make(chan message, BRODCAST_CHAN_SIZE)
 	s.players = make(map[string]*player)
+	s.votes = make(map[string]int)
 
 	if err != nil {
 		fmt.Printf("Error starting the server %s", err)

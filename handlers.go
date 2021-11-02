@@ -23,7 +23,9 @@ func handleNewPlayer(s *server, c *net.Conn) {
 	msg = strings.TrimSuffix(msg, "\n")
 	arr := strings.Split(msg, ":")
 	player.name = arr[0]
-	player.nick = arr[1]
+	//Todo only allow unique nicks
+	player.nick = strings.ToUpper(arr[1])
+	s.votes[player.nick] = 0
 	s.register <- player
 	for {
 		//Blocks till it gets a string
@@ -64,10 +66,15 @@ func messageHandler(server *server, player *player, text string) {
 	}
 }
 func commandHandler(server *server, message *message) {
-	switch message.msg {
+	commandMap := commandParser(message)
+	switch commandMap["cmd"] {
 	case "SHOW":
 		playerNames := getAllPlayerName(server.players)
 		message.msg = playerNames
+	case "VOTE":
+		voteResult := votePlayer(server.votes, commandMap["option"])
+		fmt.Print(server.votes)
+		message.msg = voteResult
 	default:
 		message.msg = "Invalid command " + message.msg + "\n"
 
@@ -75,6 +82,17 @@ func commandHandler(server *server, message *message) {
 	message.event = "SERVER"
 	message.player.sendMsgToPlayer(message)
 
+}
+
+func commandParser(message *message) map[string]string {
+	parsed := make(map[string]string)
+	arr := strings.Split(message.msg, " ")
+	parsed["cmd"] = arr[0]
+	if len(arr) > 1 {
+		parsed["option"] = arr[1]
+	}
+
+	return parsed
 }
 
 func d(m string) {
