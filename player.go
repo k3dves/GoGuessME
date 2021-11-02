@@ -6,9 +6,11 @@ import (
 )
 
 type player struct {
-	conn *net.Conn
-	nick string
-	name string
+	conn    *net.Conn
+	nick    string
+	name    string
+	canVote bool
+	alive   bool
 }
 
 func (p *player) sendMsgToPlayer(msg *message) {

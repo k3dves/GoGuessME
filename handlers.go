@@ -9,7 +9,7 @@ import (
 )
 
 func handleNewPlayer(s *server, c *net.Conn) {
-	player := &player{}
+	player := &player{canVote: true, alive: true}
 	player.conn = c
 
 	(*player.conn).Write([]byte(PLAYER_GREET))
@@ -66,21 +66,42 @@ func messageHandler(server *server, player *player, text string) {
 	}
 }
 func commandHandler(server *server, message *message) {
+	broadcast := false
 	commandMap := commandParser(message)
 	switch commandMap["cmd"] {
 	case "SHOW":
 		playerNames := getAllPlayerName(server.players)
 		message.msg = playerNames
 	case "VOTE":
-		voteResult := votePlayer(server.votes, commandMap["option"])
-		fmt.Print(server.votes)
-		message.msg = voteResult
+		if server.isVotingEnabled {
+			voteResult := votePlayer(server, message.player.nick, commandMap["option"])
+			fmt.Print(server.votes)
+			message.msg = voteResult
+		} else {
+			message.msg = "Voting is not yet enabled!!\n"
+		}
+	case "START":
+		broadcast = true
+		server.isVotingEnabled = true
+		initVotes(&server.votes)
+		enableVotingForEachPlayer(server.players)
+		message.msg = "Voting started!!\n"
+	case "STOP":
+		broadcast = true
+		server.isVotingEnabled = false
+		votes := getVotesAsString(server.votes)
+		message.msg = "Voting Results :" + votes + "\n"
 	default:
 		message.msg = "Invalid command " + message.msg + "\n"
 
 	}
 	message.event = "SERVER"
-	message.player.sendMsgToPlayer(message)
+	if broadcast {
+		server.broadcastChannel <- *message
+
+	} else {
+		message.player.sendMsgToPlayer(message)
+	}
 
 }
 

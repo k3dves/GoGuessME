@@ -12,6 +12,7 @@ type server struct {
 	register         chan *player
 	deregister       chan *player
 	votes            map[string]int
+	isVotingEnabled  bool
 }
 
 type message struct {
