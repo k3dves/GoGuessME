@@ -5,12 +5,12 @@ import (
 	"strings"
 )
 
-func getAllPlayerName(players map[*player]string) string {
+func getAllPlayerName(players map[string]*player) string {
 	var arr []string
 	fmt.Println(len(players))
-	for p := range players {
-		d(p.name)
-		arr = append(arr, p.name)
+	for nick := range players {
+		d(nick)
+		arr = append(arr, nick)
 	}
 	fmt.Print(arr)
 	fmt.Print(len(arr))

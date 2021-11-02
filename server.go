@@ -6,7 +6,7 @@ import (
 )
 
 type server struct {
-	players          map[*player]string
+	players          map[string]*player
 	listener         net.Listener
 	broadcastChannel chan message
 	register         chan *player
@@ -37,12 +37,12 @@ func (s *server) run() {
 
 		select {
 		case player := <-s.register:
-			s.players[player] = player.nick
+			s.players[player.nick] = player
 			s.broadcastChannel <- message{player: player, nick: player.name, event: "JOIN"}
 			fmt.Printf("<%s> joined the server\n", player.name)
 
 		case player := <-s.deregister:
-			delete(s.players, player)
+			delete(s.players, player.nick)
 			s.broadcastChannel <- message{player: player, nick: player.name, event: "LEFT"}
 			(*player.conn).Close()
 
@@ -54,8 +54,8 @@ func (s *server) run() {
 }
 
 func (s *server) broadcast(msg *message) {
-	for player := range s.players {
-		if msg.event != "TEXT" || msg.player != player {
+	for _, player := range s.players {
+		if msg.event != "TEXT" || msg.player.nick != player.nick {
 			player.sendMsgToPlayer(msg)
 		}
 	}
@@ -70,7 +70,7 @@ func StartGameServer() {
 	s.register = make(chan *player)
 	s.deregister = make(chan *player)
 	s.broadcastChannel = make(chan message, BRODCAST_CHAN_SIZE)
-	s.players = make(map[*player]string)
+	s.players = make(map[string]*player)
 
 	if err != nil {
 		fmt.Printf("Error starting the server %s", err)
